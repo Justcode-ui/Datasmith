@@ -12,7 +12,7 @@ const groq = GROQ_API_KEY ? new Groq({ apiKey: GROQ_API_KEY, dangerouslyAllowBro
 // Updated Groq model mapping — mixtral-8x7b-32768 has been decommissioned
 const GROQ_MODELS: Record<string, string> = {
   llama: "llama-3.3-70b-versatile",
-  GPT "openai/gpt-oss-120b",
+  GPT: "openai/gpt-oss-120b",
 };
 
 // Fallback order: try the selected model, then try alternatives
