@@ -1,0 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Backgrounds */
+  --color-bg-base:        #0E0E10;  /* Obsidian */
+  --color-bg-surface:     #1A1A1E;  /* Charcoal */
+  --color-bg-elevated:    #242428;  /* Iron */
+
+  /* Borders */
+  --color-border-default: #2E2E34;  /* Ash */
+  --color-border-focus:   #E8642A;  /* Forge Orange */
+
+  /* Brand */
+  --color-accent:         #E8642A;  /* Forge Orange */
+  --color-accent-hover:   #C94A1A;
+  --color-accent-gradient: linear-gradient(135deg, #E8642A 0%, #C94A1A 100%);
+
+  /* Text */
+  --color-text-primary:   #F0EEE8;  /* Bone White */
+  --color-text-secondary: #8A8A94;  /* Smoke */
+  --color-text-disabled:  #4A4A52;
+
+  /* Semantic */
+  --color-success:        #3DD68C;  /* Ember Green */
+  --color-danger:         #E8442A;  /* Slag Red */
+  --color-warning:        #F0A832;
+
+  /* Component */
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   14px;
+  --radius-pill: 999px;
+
+  /* Transitions */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s ease;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font-family: 'Geist Sans', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  transition: all var(--transition-fast);
+}
+
+input, textarea, select {
+  font-family: inherit;
+  outline: none;
+}
+
+code, pre {
+  font-family: 'Geist Mono', monospace;
+}
+
+/* Animations */
+@keyframes pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+.animate-pulse-slow {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-base);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-default);
+  border-radius: var(--radius-pill);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-disabled);
+}
