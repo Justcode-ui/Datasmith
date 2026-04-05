@@ -19,7 +19,7 @@ export const Navbar: React.FC = () => {
       <StepIndicator />
 
       <a 
-        href="https://github.com" 
+        href="https://github.com/Justcode-ui/Datasmith" 
         target="_blank" 
         rel="noopener noreferrer"
         className="flex items-center gap-2 px-3 py-1.5 rounded-[var(--radius-md)] hover:bg-[var(--color-bg-elevated)] transition-colors text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] group"
