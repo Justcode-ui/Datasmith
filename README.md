@@ -6,7 +6,7 @@
 
 Datasmith turns a plain English description of any ML task into a 
 complete, jurisdiction-aware, export-ready training dataset using 
-Gemini 2.0 Flash.
+Gemini 2.0 Flash or llma 3.3 or deepseekv3.
 
 ## Features
 - Describe any ML task in plain English
