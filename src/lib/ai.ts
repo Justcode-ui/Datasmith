@@ -9,12 +9,18 @@ const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || "";
 const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 const groq = GROQ_API_KEY ? new Groq({ apiKey: GROQ_API_KEY, dangerouslyAllowBrowser: true }) : null;
 
+
 // Updated Groq model mapping matching the requirements
 const MODEL_MAP: Record<string, string> = {
   llama: import.meta.env.VITE_MODEL_FAST || "llama-3.3-70b-versatile",
   deepseek: import.meta.env.VITE_MODEL_REASONING || "openai/gpt-oss-120b",
   instant: import.meta.env.VITE_MODEL_INSTANT || "llama-3.1-8b-instant",
+// Updated Groq model mapping — mixtral-8x7b-32768 has been decommissioned
+const GROQ_MODELS: Record<string, string> = {
+  llama: "llama-3.3-70b-versatile",
+  GPT: "openai/gpt-oss-120b" , 
 };
+
 
 function withTimeout<T>(promise: Promise<T>, ms: number = 60000): Promise<T> {
   let timeoutId: any;
