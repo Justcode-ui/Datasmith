@@ -21,6 +21,7 @@ export const ForgeScreen: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [locationError, setLocationError] = useState('');
   
   const [isValidatingLocation, setIsValidatingLocation] = useState(false);
   const [ambiguousLocationData, setAmbiguousLocationData] = useState<LocationValidation | null>(null);
@@ -41,8 +42,9 @@ export const ForgeScreen: React.FC = () => {
         // Automatically correct if there's a strong recommendation but not ambiguous
         setLocationContext(result.recommended_input);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.warn("Location validation failed, proceeding without disambiguation", err);
+      setLocationError(err?.message || "Location validation failed. Please verify the API connection.");
     } finally {
       setIsValidatingLocation(false);
     }
@@ -107,17 +109,17 @@ export const ForgeScreen: React.FC = () => {
   };
 
   return (
-    <div className="max-w-[680px] w-full mx-auto py-24 flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="max-w-[680px] w-full mx-auto py-12 md:py-24 flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex flex-col gap-2 text-center mb-4">
-        <h1 className="text-4xl font-bold tracking-tight text-[var(--color-text-primary)]">
+        <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-[var(--color-text-primary)] px-4">
           Forge Synthetic Data
         </h1>
-        <p className="text-[var(--color-text-secondary)]">
+        <p className="text-sm md:text-base text-[var(--color-text-secondary)] px-4">
           Describe your task and let Datasmith craft the perfect dataset.
         </p>
       </div>
 
-      <Card className="flex flex-col gap-8 p-10">
+      <Card className="flex flex-col gap-8 p-6 md:p-10">
         {/* Model Selector */}
         <SegmentedControl
           label="AI Model"
@@ -165,9 +167,15 @@ export const ForgeScreen: React.FC = () => {
                 <div className="absolute right-3 top-3 w-4 h-4 border-2 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin"></div>
               )}
             </div>
-            <p className="text-[10px] text-[var(--color-text-secondary)]">
-              Include country name for best results — e.g. "Abuja Nigeria" not just "Abuja"
-            </p>
+            {locationError ? (
+              <p className="text-[10px] text-red-500 animate-in fade-in">
+                {locationError}
+              </p>
+            ) : (
+              <p className="text-[10px] text-[var(--color-text-secondary)]">
+                Include country name for best results — e.g. "Abuja Nigeria" not just "Abuja"
+              </p>
+            )}
           </div>
 
           {/* Ambiguity Prompt */}
@@ -228,7 +236,7 @@ export const ForgeScreen: React.FC = () => {
           ]}
         />
 
-        <div className="grid grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
           {/* Row Count */}
           <Slider
             label="Rows to generate"

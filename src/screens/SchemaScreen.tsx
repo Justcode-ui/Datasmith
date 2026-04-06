@@ -45,19 +45,19 @@ export const SchemaScreen: React.FC = () => {
   };
 
   return (
-    <div className="max-w-[1000px] w-full mx-auto py-24 flex flex-col gap-8 animate-in fade-in slide-in-from-right-4 duration-500">
-      <div className="flex justify-between items-end">
+    <div className="max-w-[1000px] w-full mx-auto py-12 md:py-24 flex flex-col gap-8 animate-in fade-in slide-in-from-right-4 duration-500">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 sm:gap-0">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-bold tracking-tight">Refine Schema</h1>
           <p className="text-sm text-[var(--color-text-secondary)]">
             Review suggested features and configure generation noise.
           </p>
         </div>
-        <div className="flex gap-3">
-          <Button variant="secondary" onClick={() => setStep(1)} className="gap-2">
+        <div className="flex gap-3 w-full sm:w-auto">
+          <Button variant="secondary" onClick={() => setStep(1)} className="gap-2 flex-1 sm:flex-none">
             <ArrowLeft size={16} /> Back
           </Button>
-          <Button onClick={handleCastDataset} className="gap-2">
+          <Button onClick={handleCastDataset} className="gap-2 flex-1 sm:flex-none">
             Cast Dataset <ArrowRight size={16} />
           </Button>
         </div>

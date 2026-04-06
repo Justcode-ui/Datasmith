@@ -38,7 +38,7 @@ export const ConstraintPanel: React.FC<ConstraintPanelProps> = ({ constraints, j
               {c.description}
             </span>
             {c.valueRange && (
-              <span className="text-[var(--color-text-secondary)]">
+              <span className="text-[var(--color-text-secondary)] break-words w-full">
                 Range: {c.valueRange}
               </span>
             )}

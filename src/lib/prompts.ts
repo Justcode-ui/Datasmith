@@ -174,7 +174,8 @@ Return a JSON array of exactly ${batchSize} objects.
 Each object must have these keys: ${features.map(f => f.name).join(", ")}, "label".
 
 Rules:
-- All monetary values must use ${currencyCode} — not USD, not generic numbers
+- All monetary values MUST be output as formatted strings that include the correct currency symbol (e.g. "${currencySymbol}50,000" or "${currencySymbol}1.5M") instead of raw numbers.
+- All monetary values must use ${currencyCode} — not USD.
 - Every row must be internally consistent with ${locationContext} rules
 - The label for each row must correctly follow the label boundary above
 - Never generate a row where feature values contradict the assigned label

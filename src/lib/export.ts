@@ -11,7 +11,8 @@ export function triggerDownload(blob: Blob, filename: string) {
 
 export function downloadCSV(rows: any[], filename: string) {
   const csv = Papa.unparse(rows);
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  // Add UTF-8 BOM (\ufeff) so Excel respects the encoding for currency symbols
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
   triggerDownload(blob, `${filename}.csv`);
 }
 

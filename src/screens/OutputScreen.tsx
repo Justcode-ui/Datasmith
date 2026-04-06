@@ -42,6 +42,8 @@ export const OutputScreen: React.FC = () => {
 
   const [description, setDescription] = useState<string>('');
   const [isGeneratingDesc, setIsGeneratingDesc] = useState<boolean>(true);
+  const [isGeneratingCard, setIsGeneratingCard] = useState<boolean>(false);
+  const [cardError, setCardError] = useState<string>('');
 
   useEffect(() => {
     let active = true;
@@ -71,24 +73,32 @@ export const OutputScreen: React.FC = () => {
   }, [taskDescription, locationContext, finalRows.length, labels, features]);
 
   const handleDownloadDatasetCard = async () => {
-    const card = await generateDatasetCard(
-      model,
-      taskDescription,
-      taskType,
-      features,
-      labels,
-      finalRows.length,
-      labelNoise,
-      missingValues,
-      locationContext,
-      applyRegionalConstraints,
-      detectedConstraints,
-      constraintAssumptions,
-      jurisdictionConfidence || undefined,
-      currencySymbol,
-      currencyCode
-    );
-    downloadMarkdown(card, `${filename}-card`);
+    setIsGeneratingCard(true);
+    setCardError('');
+    try {
+      const card = await generateDatasetCard(
+        model,
+        taskDescription,
+        taskType,
+        features,
+        labels,
+        finalRows.length,
+        labelNoise,
+        missingValues,
+        locationContext,
+        applyRegionalConstraints,
+        detectedConstraints,
+        constraintAssumptions,
+        jurisdictionConfidence || undefined,
+        currencySymbol,
+        currencyCode
+      );
+      downloadMarkdown(card, `${filename}-card`);
+    } catch (err: any) {
+      setCardError(err?.message || "Failed to generate dataset card. Please try again.");
+    } finally {
+      setIsGeneratingCard(false);
+    }
   };
 
   const copyToClipboard = () => {
@@ -97,19 +107,19 @@ export const OutputScreen: React.FC = () => {
   };
 
   return (
-    <div className="max-w-[1100px] w-full mx-auto py-24 flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="flex justify-between items-end">
-        <div className="flex flex-col gap-1">
+    <div className="max-w-[1100px] w-full mx-auto py-12 md:py-24 flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 sm:gap-0">
+        <div className="flex flex-col gap-1 px-4 sm:px-0">
           <h1 className="text-2xl font-bold tracking-tight">Forge Complete</h1>
           <p className="text-sm text-[var(--color-text-secondary)]">
             Preview, review statistics, and export your synthetic dataset.
           </p>
         </div>
-        <div className="flex gap-3">
-          <Button variant="secondary" onClick={copyToClipboard} className="gap-2">
+        <div className="flex gap-3 px-4 sm:px-0 w-full sm:w-auto">
+          <Button variant="secondary" onClick={copyToClipboard} className="gap-2 flex-1 sm:flex-none">
             <Clipboard size={16} /> Copy JSON
           </Button>
-          <Button onClick={resetForge} className="gap-2">
+          <Button onClick={resetForge} className="gap-2 flex-1 sm:flex-none">
             <Plus size={16} /> Forge Another
           </Button>
         </div>
@@ -131,7 +141,13 @@ export const OutputScreen: React.FC = () => {
           { label: 'Features', value: features.length, icon: Columns, variant: 'neutral' as const },
           { label: 'Class Balance', value: 'Balanced', icon: Layers, variant: 'accent' as const },
           { label: 'Null Values', value: `${nullPercentage}%`, icon: FileType, variant: missingValues > 0 ? 'warning' as const : 'neutral' as const },
-          ...(applyRegionalConstraints ? [{ label: 'Constraint Violations', value: constraintViolations, icon: FileType, variant: constraintViolations > 0 ? 'warning' as const : 'success' as const }] : [])
+          ...(applyRegionalConstraints ? [{ 
+            label: 'Constraint Violations', 
+            value: constraintViolations, 
+            icon: FileType, 
+            variant: constraintViolations > 0 ? 'warning' as const : 'success' as const,
+            description: "AI hallucination rate. Minor violations are a normal and acceptable part of large batch synthesis."
+          }] : [])
         ].map((stat, i) => (
           <Card key={i} className="flex flex-col gap-3 p-4">
             <div className="flex items-center justify-between">
@@ -144,6 +160,11 @@ export const OutputScreen: React.FC = () => {
               <span className="text-2xl font-mono font-bold">{stat.value}</span>
               <Badge variant={stat.variant}>{stat.variant === 'success' ? 'Verified' : 'Nominal'}</Badge>
             </div>
+            {stat.description && (
+              <p className="text-[10px] text-[var(--color-text-disabled)] leading-tight mt-auto border-t border-[var(--color-border-default)] pt-2">
+                {stat.description}
+              </p>
+            )}
           </Card>
         ))}
       </div>
@@ -238,10 +259,15 @@ export const OutputScreen: React.FC = () => {
             <h3 className="text-lg font-bold">Model Documentation</h3>
             <p className="text-sm text-[var(--color-text-secondary)]">Generate a professional metadata card for HuggingFace.</p>
           </div>
-          <Button onClick={handleDownloadDatasetCard} variant="primary" className="gap-2 h-12 w-full shadow-orange-950/40">
-            <FileText size={18} />
-            Generate Dataset Card (.md)
+          <Button onClick={handleDownloadDatasetCard} disabled={isGeneratingCard} variant="primary" className="gap-2 h-12 w-full shadow-orange-950/40 transition-all">
+            {isGeneratingCard ? (
+              <div className="w-4 h-4 border-2 border-[var(--color-bg-base)] border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <FileText size={18} />
+            )}
+            {isGeneratingCard ? "Generating Card..." : "Generate Dataset Card (.md)"}
           </Button>
+          {cardError && <p className="text-xs text-red-500 text-center">{cardError}</p>}
         </Card>
       </div>
     </div>

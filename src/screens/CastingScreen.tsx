@@ -26,43 +26,49 @@ export const CastingScreen: React.FC = () => {
     const rowsNeeded = Math.min(batchSize, targetRows - allRows.length);
 
     try {
-      const batch = await generateBatch(
-        model,
-        rowsNeeded,
-        taskDescription,
-        taskType,
-        features,
-        labels,
-        distribution,
-        edgeCaseBoost,
-        locationContext,
-        applyRegionalConstraints,
-        detectedConstraints,
-        currencySymbol,
-        currencyCode
-      );
+      let retryCount = 0;
+    const MAX_RETRIES = 3;
+    let batch: any = null;
 
-      // Verify batch if constraints apply
-      if (applyRegionalConstraints && detectedConstraints.length > 0) {
-        // Let's run a fake verify to mimic the logic if real rules parser is complex:
-        // (In an actual extension, verifyBatch gets mapped correctly.)
-        verifyBatch(batch, []); 
-        // We will mock the violationRate based on standard detection for the demo
-        const fakeViolationRate = Math.random() > 0.9 ? 0.25 : 0.05; // 10% chance to trigger error
-        
-        if (fakeViolationRate > 0.20) {
-          setPaused(true);
-          setViolationError(`High constraint violation rate (${(fakeViolationRate * 100).toFixed(0)}%). The model may not have sufficient knowledge of this jurisdiction's rules.`);
-          incrementConstraintViolations();
-          return;
+    while (retryCount < MAX_RETRIES && !batch) {
+      try {
+        batch = await generateBatch(
+          model,
+          rowsNeeded,
+          taskDescription,
+          taskType,
+          features,
+          labels,
+          distribution,
+          edgeCaseBoost,
+          locationContext,
+          applyRegionalConstraints,
+          detectedConstraints,
+          currencySymbol,
+          currencyCode
+        );
+
+        // Verify batch if constraints apply
+        if (applyRegionalConstraints && detectedConstraints.length > 0) {
+          // The verification is stubbed out since we do not want to randomly pause valid AI outputs.
+          // In a real implementation we would convert detectedConstraints into ConstraintRules.
+          verifyBatch(batch, []); 
         }
+      } catch (err: any) {
+        retryCount++;
+        if (retryCount >= MAX_RETRIES) {
+          throw err;
+        }
+        console.warn(`[Datasmith] Batch failed, retrying (${retryCount}/${MAX_RETRIES})...`, err);
+        await new Promise(resolve => setTimeout(resolve, 1500 * retryCount));
       }
+    }
 
       setAllRows(prev => {
         const newRows = [...prev, ...batch];
         // After state update, check if we're done
         if (newRows.length >= targetRows) {
-          setGeneratedData(newRows, '');
+           setGeneratedData(newRows, '');
         } else {
           setCastingStatus({
             currentBatch: currentBatch + 1 > totalBatches ? totalBatches : currentBatch + 1,
@@ -74,10 +80,10 @@ export const CastingScreen: React.FC = () => {
         return newRows;
       });
 
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Casting failed. Please check your console.');
-      setStep(2);
+      setPaused(true);
+      setViolationError(`Generation failed: ${err?.message || 'Unknown error'}. Please try again.`);
     }
   }, [
     paused, allRows.length, targetRows, model, taskDescription, taskType, features, labels,
@@ -108,7 +114,7 @@ export const CastingScreen: React.FC = () => {
   const progress = totalBatches > 0 ? (currentBatch / totalBatches) * 100 : 0;
 
   return (
-    <div className="fixed inset-0 bg-[var(--color-bg-base)] z-50 flex items-center justify-center animate-in fade-in duration-1000">
+    <div className="fixed inset-0 bg-[var(--color-bg-base)] z-50 flex items-center justify-center animate-in fade-in duration-1000 px-6">
       <div className="max-w-md w-full flex flex-col items-center gap-12 text-center">
         {/* Forge Animation */}
         <div className="flex flex-col gap-3 w-48">
@@ -155,11 +161,11 @@ export const CastingScreen: React.FC = () => {
               <p className="text-xs text-[var(--color-text-secondary)] text-left">
                 Try: simplifying your task description, or disabling regional constraints.
               </p>
-              <div className="flex flex-col gap-2 mt-2">
-                <Button onClick={handleRetry} className="gap-2 bg-red-500 hover:bg-red-600 text-white border-0">
+              <div className="flex flex-col gap-2 mt-2 w-full">
+                <Button onClick={handleRetry} className="gap-2 bg-red-500 hover:bg-red-600 text-white border-0 w-full">
                   <RefreshCw size={16} /> Retry batch
                 </Button>
-                <Button onClick={handleContinueWithoutConstraints} variant="ghost" className="gap-2 text-red-400 hover:bg-red-500/10">
+                <Button onClick={handleContinueWithoutConstraints} variant="ghost" className="gap-2 text-red-400 hover:bg-red-500/10 w-full">
                   <XCircle size={16} /> Continue without constraints
                 </Button>
               </div>

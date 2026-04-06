@@ -9,16 +9,25 @@ const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || "";
 const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 const groq = GROQ_API_KEY ? new Groq({ apiKey: GROQ_API_KEY, dangerouslyAllowBrowser: true }) : null;
 
-// Updated Groq model mapping — mixtral-8x7b-32768 has been decommissioned
-const GROQ_MODELS: Record<string, string> = {
-  llama: "llama-3.3-70b-versatile",
-  deepseek: "deepseek-r1-distill-qwen-32b",
+// Updated Groq model mapping matching the requirements
+const MODEL_MAP: Record<string, string> = {
+  llama: import.meta.env.VITE_MODEL_FAST || "llama-3.3-70b-versatile",
+  deepseek: import.meta.env.VITE_MODEL_REASONING || "openai/gpt-oss-120b",
+  instant: import.meta.env.VITE_MODEL_INSTANT || "llama-3.1-8b-instant",
 };
+
+function withTimeout<T>(promise: Promise<T>, ms: number = 60000): Promise<T> {
+  let timeoutId: any;
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`Request timed out after ${ms}ms`)), ms);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
+}
 
 // Fallback order: try the selected model, then try alternatives
 const FALLBACK_ORDER: AIModel[] = ["llama", "gemini", "deepseek"];
 
-async function callGemini(prompt: string, jsonMode: boolean = true): Promise<string> {
+async function callGemini(prompt: string, jsonMode: boolean = true, triggerFallbackEvent: boolean = false): Promise<string> {
   if (!genAI) throw new Error("Gemini API key not configured. Add VITE_GEMINI_API_KEY to your .env file.");
   
   const config: any = {};
@@ -31,14 +40,25 @@ async function callGemini(prompt: string, jsonMode: boolean = true): Promise<str
     generationConfig: config,
   });
   
-  const result = await model.generateContent(prompt);
-  return result.response.text();
+  try {
+    const result = await withTimeout(model.generateContent(prompt));
+    return result.response.text();
+  } catch (err: any) {
+    const errorMsg = err?.message || String(err);
+    if (err?.status === 429 || errorMsg.includes('429') || errorMsg.toLowerCase().includes('rate') || errorMsg.toLowerCase().includes('too many requests')) {
+      if (triggerFallbackEvent && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('gemini-fallback'));
+      }
+      return callGroq(prompt, 'llama', jsonMode);
+    }
+    throw err;
+  }
 }
 
 async function callGroq(prompt: string, modelKey: string, jsonMode: boolean = true): Promise<string> {
   if (!groq) throw new Error("Groq API key not configured. Add VITE_GROQ_API_KEY to your .env file.");
   
-  const groqModel = GROQ_MODELS[modelKey] || GROQ_MODELS.llama;
+  const groqModel = MODEL_MAP[modelKey] || MODEL_MAP.llama;
 
   const config: any = {
     messages: [{ role: "user" as const, content: prompt }],
@@ -49,7 +69,7 @@ async function callGroq(prompt: string, modelKey: string, jsonMode: boolean = tr
     config.response_format = { type: "json_object" as const };
   }
 
-  const completion = await groq.chat.completions.create(config);
+  const completion = await withTimeout(groq.chat.completions.create(config));
   return completion.choices[0].message.content || "";
 }
 
@@ -83,7 +103,7 @@ async function callWithFallback(
     try {
       let text: string;
       if (model === "gemini") {
-        text = await callGemini(prompt, jsonMode);
+        text = await callGemini(prompt, jsonMode, preferredModel === 'gemini');
       } else {
         text = await callGroq(prompt, model, jsonMode);
       }
@@ -101,12 +121,11 @@ async function callWithFallback(
 
 // ─── Public API ─────────────────────────────────────────────
 
-function selectModel(preferredModel: AIModel, requiresGrounding: boolean): AIModel {
-  // If we require grounding and the reasoning model is configured (and exists in our enum map), use it.
-  if (requiresGrounding && import.meta.env.VITE_MODEL_REASONING) {
+function selectModel(requiresGrounding: boolean): AIModel {
+  if (requiresGrounding) {
     return 'deepseek';
   }
-  return preferredModel;
+  return 'llama';
 }
 
 export interface LocationValidation {
@@ -132,7 +151,7 @@ export async function suggestSchema(
   applyRegionalConstraints?: boolean
 ) {
   const isGrounded = !!(locationContext?.trim() && applyRegionalConstraints);
-  const selectedModel = selectModel(model, isGrounded);
+  const selectedModel = model === 'gemini' ? 'gemini' : selectModel(isGrounded);
   
   const prompt = isGrounded 
     ? PROMPTS.SUGGEST_SCHEMA_GROUNDED(taskDescription, taskType, locationContext!)
@@ -159,7 +178,7 @@ export async function generateBatch(
   labelBoundary?: string
 ) {
   const isGrounded = !!(locationContext?.trim() && applyRegionalConstraints);
-  const selectedModel = selectModel(model, isGrounded);
+  const selectedModel = model === 'gemini' ? 'gemini' : 'llama'; // All batch generation calls map to llama
 
   const prompt = isGrounded
     ? PROMPTS.GENERATE_BATCH_GROUNDED(
@@ -218,7 +237,8 @@ export async function generateDatasetCard(
         totalRows, labelNoise, missingValues, dateStr
       );
 
-  const { text } = await callWithFallback(model, prompt, false);
+  const selectedModel = model === 'gemini' ? 'gemini' : 'llama'; // Dataset card goes to llama
+  const { text } = await callWithFallback(selectedModel, prompt, false);
   return text;
 }
 
@@ -239,7 +259,7 @@ export async function generateDatasetDescription(
     features.map(f => f.name).join(", ")
   );
 
-  // User specifically requested llama-3.3-70b-versatile for this which is our 'llama' key
-  const { text } = await callWithFallback("llama", prompt, false);
+  // Plain English summary (Call 4) maps to llama-3.1-8b-instant
+  const { text } = await callWithFallback("instant" as AIModel, prompt, false);
   return text;
 }
