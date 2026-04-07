@@ -22,7 +22,7 @@ Gemini 2.0 Flash or llma 3.3 or deepseekr1.
 - Gemini 2.0 Flash API
 - Groq (DeepSeek R1 for regional grounding)
 - Zustand, TanStack Table, Papa Parse
--Antigravity Systems 
+- Antigravity Systems 
 
 ## Getting Started
 \```bash
