@@ -17,12 +17,27 @@ const MODEL_MAP: Record<string, string> = {
   instant: import.meta.env.VITE_MODEL_INSTANT || "llama-3.1-8b-instant",
 };
 
-function withTimeout<T>(promise: Promise<T>, ms: number = 60000): Promise<T> {
-  let timeoutId: any;
-  const timeoutPromise = new Promise<T>((_, reject) => {
-    timeoutId = setTimeout(() => reject(new Error(`Request timed out after ${ms}ms`)), ms);
+function withTimeout<T>(promiseFn: () => Promise<T>, ms: number = 30000): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const attemptCall = (retriesLeft: number) => {
+      let timeoutId: any;
+      const timeoutPromise = new Promise<T>((_, rej) => {
+        timeoutId = setTimeout(() => rej(new Error(`Request timed out after ${ms}ms`)), ms);
+      });
+      Promise.race([promiseFn(), timeoutPromise])
+        .then(res => { clearTimeout(timeoutId); resolve(res); })
+        .catch(err => {
+          clearTimeout(timeoutId);
+          if (err?.message?.includes('timed out') && retriesLeft > 0) {
+            console.warn(`[Datasmith] Request timed out, retrying...`);
+            attemptCall(retriesLeft - 1);
+          } else {
+            reject(err);
+          }
+        });
+    };
+    attemptCall(1);
   });
-  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
 }
 
 // Fallback order: try the selected model, then try alternatives
@@ -42,7 +57,7 @@ async function callGemini(prompt: string, jsonMode: boolean = true, triggerFallb
   });
   
   try {
-    const result = await withTimeout(model.generateContent(prompt));
+    const result = await withTimeout(() => model.generateContent(prompt));
     return result.response.text();
   } catch (err: any) {
     const errorMsg = err?.message || String(err);
@@ -70,7 +85,7 @@ async function callGroq(prompt: string, modelKey: string, jsonMode: boolean = tr
     config.response_format = { type: "json_object" as const };
   }
 
-  const completion = await withTimeout(groq.chat.completions.create(config));
+  const completion = await withTimeout(() => groq!.chat.completions.create(config));
   return completion.choices[0].message.content || "";
 }
 
@@ -181,29 +196,44 @@ export async function generateBatch(
   const isGrounded = !!(locationContext?.trim() && applyRegionalConstraints);
   const selectedModel = model === 'gemini' ? 'gemini' : 'llama'; // All batch generation calls map to llama
 
-  const prompt = isGrounded
-    ? PROMPTS.GENERATE_BATCH_GROUNDED(
-        batchSize, taskDescription, taskType, locationContext!, currencySymbol || '$', currencyCode || 'USD',
-        features, labels, labelBoundary || '', distribution, edgeCaseBoost, detectedConstraints || []
-      )
-    : PROMPTS.GENERATE_BATCH(
-        batchSize, taskDescription, taskType,
-        features, labels, distribution, edgeCaseBoost
-      );
+  let totalRowsObtained: any[] = [];
+  let rowsNeeded = batchSize;
+  let attempt = 0;
+
+  while (rowsNeeded > 0 && attempt < 3) {
+    const prompt = isGrounded
+      ? PROMPTS.GENERATE_BATCH_GROUNDED(
+          rowsNeeded, taskDescription, taskType, locationContext!, currencySymbol || '$', currencyCode || 'USD',
+          features, labels, labelBoundary || '', distribution, edgeCaseBoost, detectedConstraints || []
+        )
+      : PROMPTS.GENERATE_BATCH(
+          rowsNeeded, taskDescription, taskType,
+          features, labels, distribution, edgeCaseBoost
+        );
+    
+    const { text } = await callWithFallback(selectedModel, prompt, true);
+    const parsed = parseJSON(text);
+    
+    let newRows: any[] = [];
+    if (Array.isArray(parsed)) newRows = parsed;
+    else if (parsed.data && Array.isArray(parsed.data)) newRows = parsed.data;
+    else if (parsed.rows && Array.isArray(parsed.rows)) newRows = parsed.rows;
+    else {
+      const firstArray = Object.values(parsed).find(v => Array.isArray(v));
+      if (firstArray) newRows = firstArray as any[];
+      else newRows = [parsed];
+    }
+    
+    totalRowsObtained = totalRowsObtained.concat(newRows);
+    if (totalRowsObtained.length >= batchSize) {
+      return totalRowsObtained.slice(0, batchSize);
+    }
+    
+    rowsNeeded = batchSize - totalRowsObtained.length;
+    attempt++;
+  }
   
-  const { text } = await callWithFallback(selectedModel, prompt, true);
-  const parsed = parseJSON(text);
-  
-  // Normalize: could be array directly, or wrapped { data: [...] }
-  if (Array.isArray(parsed)) return parsed;
-  if (parsed.data && Array.isArray(parsed.data)) return parsed.data;
-  if (parsed.rows && Array.isArray(parsed.rows)) return parsed.rows;
-  
-  // Last resort: grab first array value
-  const firstArray = Object.values(parsed).find(v => Array.isArray(v));
-  if (firstArray) return firstArray;
-  
-  return [parsed]; // Wrap single object
+  return totalRowsObtained;
 }
 
 export async function generateDatasetCard(

@@ -14,7 +14,7 @@ import { GroundingBanner } from '../components/output/GroundingBanner';
 
 export const OutputScreen: React.FC = () => {
   const {
-    generatedRows, features, labels, labelNoise, 
+    generatedRows, features, labels, labelNoise, targetRows,
     missingValues, outlierInjection, taskDescription,
     taskType, model, resetForge, 
     locationContext, applyRegionalConstraints, detectedConstraints, constraintAssumptions, jurisdictionConfidence, currencySymbol, currencyCode, constraintViolations
@@ -137,7 +137,13 @@ export const OutputScreen: React.FC = () => {
       {/* Stats Row */}
       <div className={`grid grid-cols-1 sm:grid-cols-2 ${applyRegionalConstraints ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-4`}>
         {[
-          { label: 'Rows Generated', value: finalRows.length.toLocaleString(), icon: Rows, variant: 'success' as const },
+          { 
+            label: 'Rows Generated', 
+            value: finalRows.length < targetRows ? `${finalRows.length} / ${targetRows}` : finalRows.length.toLocaleString(), 
+            icon: Rows, 
+            variant: finalRows.length < targetRows ? 'warning' as const : 'success' as const,
+            description: finalRows.length < targetRows ? `Generated ${finalRows.length} of ${targetRows} requested rows.` : undefined
+          },
           { label: 'Features', value: features.length, icon: Columns, variant: 'neutral' as const },
           { label: 'Class Balance', value: 'Balanced', icon: Layers, variant: 'accent' as const },
           { label: 'Null Values', value: `${nullPercentage}%`, icon: FileType, variant: missingValues > 0 ? 'warning' as const : 'neutral' as const },

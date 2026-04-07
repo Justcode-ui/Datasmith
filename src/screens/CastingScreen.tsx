@@ -18,6 +18,7 @@ export const CastingScreen: React.FC = () => {
   const [paused, setPaused] = React.useState(false);
   const [violationError, setViolationError] = React.useState<string | null>(null);
   const [allRows, setAllRows] = React.useState<any[]>([]);
+  const isTopUpAttempted = React.useRef(false);
 
   const generateNextBatch = React.useCallback(async () => {
     if (paused || allRows.length >= targetRows) return;
@@ -70,12 +71,27 @@ export const CastingScreen: React.FC = () => {
         if (newRows.length >= targetRows) {
            setGeneratedData(newRows, '');
         } else {
-          setCastingStatus({
-            currentBatch: currentBatch + 1 > totalBatches ? totalBatches : currentBatch + 1,
-            totalBatches,
-            rowsGenerated: newRows.length,
-            isCasting: true
-          });
+          if (currentBatch >= totalBatches) {
+            if (isTopUpAttempted.current) {
+              // Final top-up still failed to meet target rows
+              setGeneratedData(newRows, '');
+            } else {
+              isTopUpAttempted.current = true;
+              setCastingStatus({
+                currentBatch: totalBatches,
+                totalBatches,
+                rowsGenerated: newRows.length,
+                isCasting: true
+              });
+            }
+          } else {
+            setCastingStatus({
+              currentBatch: currentBatch + 1,
+              totalBatches,
+              rowsGenerated: newRows.length,
+              isCasting: true
+            });
+          }
         }
         return newRows;
       });
