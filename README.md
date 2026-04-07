@@ -6,7 +6,7 @@
 
 Datasmith turns a plain English description of any ML task into a 
 complete, jurisdiction-aware, export-ready training dataset using 
-Gemini 2.0 Flash or llma 3.3 or deepseekv3.
+Gemini 2.0 Flash or llma 3.3 or deepseekr1.
 
 ## Features
 - Describe any ML task in plain English
@@ -22,6 +22,7 @@ Gemini 2.0 Flash or llma 3.3 or deepseekv3.
 - Gemini 2.0 Flash API
 - Groq (DeepSeek R1 for regional grounding)
 - Zustand, TanStack Table, Papa Parse
+-Antigravity Systems 
 
 ## Getting Started
 \```bash
